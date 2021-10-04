@@ -25,7 +25,15 @@ def build_translations(output_file):
             if (extension == '.yml'):
                 with open(os.path.join(root, file), 'r') as stream:
                     try:
-                        yamldata = (yaml.load(stream))
+                        yamldata = (yaml.load(stream, Loader=yaml.FullLoader))
+                        # Backwards compatibility for Armenian, whose code changed
+                        # from 'am' to 'hy'.
+                        if no_extension == 'languages' and 'hy' in yamldata:
+                            yamldata['am'] = yamldata['hy']
+                        if key == 'hy':
+                            if 'am' not in data:
+                                data['am'] = {}
+                            data['am'][no_extension] = yamldata
                         data[key][no_extension] = yamldata
                     except Exception as exc:
                         print (exc)
@@ -51,9 +59,11 @@ def main():
     repo = Repo(os.getcwd())
     # Save the current branch for later.
     try:
-        branch = repo.active_branch.name
+        print('Starting branch was ' + branch)
     except:
-        branch = False
+        branch = 'my-temporary-branch-that-is-hopefully-not-being-used'
+        temp_branch = repo.create_head(branch)
+        temp_branch.checkout()
     for tag in repo.tags:
         # Switch to the tag and build another version.
         repo.git.checkout(tag)
